@@ -6,10 +6,10 @@ import { ScrollView } from "react-native-gesture-handler";
 
 export default function DetalleEjercicio() {
   const route = useRoute();
-  const { ejercicio } = route.params; // Obtén el ejercicio de los parámetros
+  const { exercise } = route.params;
 
   // Configuración del reproductor de video
-  const player = useVideoPlayer(ejercicio.video, (player) => {
+  const player = useVideoPlayer(exercise.videoUrl, (player) => {
     player.loop = true;
   });
 
@@ -17,21 +17,21 @@ export default function DetalleEjercicio() {
     <ScrollView className="flex-1 pb-6">
       <View className="flex-1 items-center px-5 pt-5">
         <Text className="text-3xl font-bold text-center mb-2 mt-5">
-          {ejercicio.nombre}
+          {exercise.name}
         </Text>
         <Text className="text-lg text-gray-500 text-center mb-2">
-          {ejercicio.musculo}
+          {exercise.muscle}
         </Text>
         <Text className="text-base text-gray-700 text-center mb-5">
-          {ejercicio.categoria}
+          {exercise.category}
         </Text>
 
         <Text className="text-sm text-justify text-gray-800 leading-6 mb-5">
-          {ejercicio.descripcion}
+          {exercise.description}
         </Text>
 
         <Image
-          source={{ uri: ejercicio.imagen }}
+          source={{ uri: exercise.imageUrl }}
           className="w-full h-48 rounded-lg mb-5"
         />
 

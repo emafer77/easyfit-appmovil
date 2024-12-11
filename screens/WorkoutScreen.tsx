@@ -8,90 +8,109 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
 
-const ejercicios = [
-  {
-    grupo: "Pecho",
-    ejercicios: [
-      {
-        id: 1,
-        musculo: "pecho",
-        nombre: "Press Banca",
-        categoria: "hipertrofia",
-        descripcion: "Acuéstese plano en el banco, con los pies en el suelo.",
-        video:
-          "https://media.musclewiki.com/media/uploads/videos/branded/male-barbell-bench-press-front.mp4#t=0.1",
-        imagen:
-          "https://www.muscularstore.es/blog/wp-content/uploads/2019/05/Press-de-banca-con-barra.jpg",
-      },
-      {
-        id: 1,
-        musculo: "pecho",
-        nombre: "Press Banca",
-        categoria: "hipertrofia",
-        descripcion: "Acuéstese plano en el banco, con los pies en el suelo.",
-        video:
-          "https://media.musclewiki.com/media/uploads/videos/branded/male-barbell-bench-press-front.mp4#t=0.1",
-        imagen:
-          "https://www.muscularstore.es/blog/wp-content/uploads/2019/05/Press-de-banca-con-barra.jpg",
-      },
-    ],
-  },
-   {
-    grupo: "Espalda",
-    ejercicios: [
-      {
-        id: 1,
-        musculo: "pecho",
-        nombre: "Press Banca",
-        categoria: "hipertrofia",
-        descripcion: "Acuéstese plano en el banco, con los pies en el suelo.",
-        video:
-          "https://media.musclewiki.com/media/uploads/videos/branded/male-barbell-bench-press-front.mp4#t=0.1",
-        imagen:
-          "https://www.muscularstore.es/blog/wp-content/uploads/2019/05/Press-de-banca-con-barra.jpg",
-      },
-      {
-        id: 1,
-        musculo: "pecho",
-        nombre: "Press Banca",
-        categoria: "hipertrofia",
-        descripcion: "Acuéstese plano en el banco, con los pies en el suelo.",
-        video:
-          "https://media.musclewiki.com/media/uploads/videos/branded/male-barbell-bench-press-front.mp4#t=0.1",
-        imagen:
-          "https://www.muscularstore.es/blog/wp-content/uploads/2019/05/Press-de-banca-con-barra.jpg",
-      },
-    ],
-  },
-];
+interface Exercise {
+  id: number;
+  name: string;
+  description: string;
+  muscle: string;
+  category: string;
+  videourl: string;
+  imageurl: string;
+}
+
+interface GroupedExercise {
+  groupName: string;
+  exercises: Exercise[];
+}
 
 const WorkoutScreen = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredEjercicios, setFilteredEjercicios] = useState(ejercicios);
-  const [expandedGroup, setExpandedGroup] = useState(null);
+  const [filteredExercises, setFilteredExercises] = useState<GroupedExercise[]>(
+    []
+  );
+  const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
   const navigation = useNavigation();
+  const [data, setData] = useState<Exercise[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data from the API
+  const fetchData = async () => {
+    try {
+      const response = await axios.get("http://192.168.0.123:5000/exercises/"); //aqui se sustituye la ip de su ordenador
+      setData(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError("Hubo un problema al cargar los datos.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const filtered = ejercicios
-      .map((grupo) => ({
-        ...grupo,
-        ejercicios: grupo.ejercicios.filter((ejercicio) =>
-          ejercicio.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-        ),
-      }))
-      .filter((grupo) => grupo.ejercicios.length > 0);
+    fetchData();
+  }, []);
 
-    setFilteredEjercicios(filtered);
-  }, [searchTerm]);
+  useEffect(() => {
+    if (data) {
+      const groupedData = groupExercisesByCategory(data);
+      const filtered = groupedData
+        .map((group) => ({
+          ...group,
+          exercises: group.exercises.filter((exercise) =>
+            exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
+          ),
+        }))
+        .filter((group) => group.exercises.length > 0);
 
-  const toggleGroup = (index) => {
+      setFilteredExercises(filtered);
+    }
+  }, [searchTerm, data]);
+
+  const groupExercisesByCategory = (
+    exercises: Exercise[]
+  ): GroupedExercise[] => {
+    const grouped: { [key: string]: Exercise[] } = {};
+
+    exercises.forEach((exercise) => {
+      const muscle = exercise.muscle;
+      if (!grouped[muscle]) {
+        grouped[muscle] = [];
+      }
+      grouped[muscle].push(exercise);
+    });
+
+    return Object.keys(grouped).map((key) => ({
+      groupName: key,
+      exercises: grouped[key],
+    }));
+  };
+
+  const toggleGroup = (index: number) => {
     setExpandedGroup(expandedGroup === index ? null : index);
   };
 
-  const handleEjercicioPress = (ejercicio) => {
-    navigation.navigate("DetalleEjercicio", { ejercicio });
+  const handleExercisePress = (exercise: Exercise) => {
+    navigation.navigate("DetalleEjercicio", { exercise });
   };
+
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-lg text-blue-500">Cargando...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-lg text-red-500">{error}</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 p-4 bg-white">
@@ -110,9 +129,8 @@ const WorkoutScreen = () => {
         />
       </View>
 
-      {/* Lista de grupos de ejercicios */}
       <FlatList
-        data={filteredEjercicios}
+        data={filteredExercises}
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item, index }) => (
           <View className="mb-3">
@@ -120,20 +138,20 @@ const WorkoutScreen = () => {
               onPress={() => toggleGroup(index)}
               className="py-3 px-4 bg-gray-200 rounded-lg"
             >
-              <Text className="text-lg font-semibold">{item.grupo}</Text>
+              <Text className="text-lg font-semibold">{item.groupName}</Text>
             </TouchableOpacity>
             {expandedGroup === index && (
               <View className="pl-4 mt-2">
-                {item.ejercicios.map((ejercicio, ejIndex) => (
+                {item.exercises.map((exercise, ejIndex) => (
                   <TouchableOpacity
                     key={ejIndex}
-                    onPress={() => handleEjercicioPress(ejercicio)}
+                    onPress={() => handleExercisePress(exercise)}
                   >
                     <Text className="text-base mb-1 font-bold">
-                      {ejercicio.nombre}
+                      {exercise.name}
                     </Text>
                     <Text className="text-sm text-gray-500">
-                      {ejercicio.descripcion} - {ejercicio.dificultad}
+                      {exercise.description} - {exercise.muscle}
                     </Text>
                   </TouchableOpacity>
                 ))}
